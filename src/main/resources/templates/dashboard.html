@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>AutoScalp Dashboard</title>
+    <meta http-equiv="refresh" content="3">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+               background:#0f172a; color:#e2e8f0; margin:0; padding:24px; }
+        h1 { margin-top:0; font-size:24px; }
+        .badge { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+        .ok    { background:#16a34a; color:white; }
+        .warn  { background:#f59e0b; color:#1f2937; }
+        .err   { background:#dc2626; color:white; }
+        .grid { display:grid; grid-template-columns: repeat(6, 1fr); gap:16px; margin:24px 0; }
+        .card { background:#1e293b; padding:16px; border-radius:12px; }
+        .label { font-size:12px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; }
+        .value { font-size:24px; font-weight:700; margin-top:4px; }
+        .pos { color:#4ade80; }
+        .neg { color:#f87171; }
+        .row { display:grid; grid-template-columns: 1fr 1fr; gap:24px; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { text-align:left; padding:8px; border-bottom:1px solid #334155; }
+        th { font-size:11px; color:#94a3b8; text-transform:uppercase; }
+        .rule-list li { margin:4px 0; }
+        .closed.win { border-left:3px solid #4ade80; }
+        .closed.loss { border-left:3px solid #f87171; }
+    </style>
+</head>
+<body>
+<h1>
+    AutoScalp
+    <span class="badge"
+          th:classappend="${marketOpen} ? 'ok' : 'warn'"
+          th:text="${marketOpen} ? 'MARKET OPEN' : 'MARKET CLOSED'">--</span>
+    <span class="badge"
+          th:classappend="${halted} ? 'err' : 'ok'"
+          th:text="${halted} ? 'HALTED' : 'TRADING'">--</span>
+    <span class="badge ok" th:text="${mode}">PAPER</span>
+</h1>
+
+<div class="grid">
+    <div class="card"><div class="label">P&amp;L</div>
+        <div class="value" th:classappend="${pnl >= 0 ? 'pos' : 'neg'}"
+             th:text="${'₹' + pnl}">₹0</div></div>
+    <div class="card"><div class="label">Trades</div>
+        <div class="value" th:text="${trades}">0</div></div>
+    <div class="card"><div class="label">Win / Loss</div>
+        <div class="value"><span th:text="${winners}">0</span> / <span th:text="${trades - winners}">0</span></div></div>
+    <div class="card"><div class="label">Capital</div>
+        <div class="value" th:text="${'₹' + capital}">₹0</div></div>
+    <div class="card"><div class="label">SL Hits</div>
+        <div class="value" th:text="${slHits + ' / ' + slLimit}">0/2</div></div>
+    <div class="card"><div class="label">Profit Lock</div>
+        <div class="value" th:text="${profitLock} ? 'LOCKED' : 'OPEN'">OPEN</div></div>
+</div>
+
+<div class="row">
+    <div class="card">
+        <h3>Active Rules</h3>
+        <ul class="rule-list">
+            <li>2-SL halt: <strong th:text="${slHits + '/' + slLimit}">0/2</strong></li>
+            <li>20% profit lock: <strong th:text="${profitLock} ? 'TRIGGERED' : 'open'">open</strong></li>
+            <li>Allocation: <strong th:text="${(risk.capitalPerTradePct * 100) + '%'}">30%</strong></li>
+            <li>Confluence (L1): <strong th:text="${strategy.minConfluenceSetups + ' of 4'}">2 of 4</strong></li>
+            <li>Layer 2 confirms: <strong th:text="${strategy.minLayer2Passed + ' of 4'}">3 of 4</strong></li>
+            <li>Exchange SL-M: <strong>Active</strong></li>
+            <li>Trailing SL: <strong th:text="${(risk.trailActivatePct * 100) + '% / ' + (risk.trailGapPct * 100) + '%'}">45% / 9%</strong></li>
+            <li>Exit levels: <strong th:text="${'SL ' + (risk.optionSlPct * 100) + '% TP ' + (risk.optionTpPct * 100) + '%'}">SL 25% TP 30%</strong></li>
+            <li>Recovery used: <strong th:text="${recoveryUsed} ? 'YES' : 'no'">no</strong></li>
+        </ul>
+    </div>
+    <div class="card">
+        <h3>Active Positions</h3>
+        <table>
+            <thead><tr><th>Symbol</th><th>Type</th><th>Lots</th><th>Entry</th><th>Trail</th><th>Setups</th></tr></thead>
+            <tbody>
+            <tr th:each="t : ${activeTrades}">
+                <td th:text="${t.contract.tradingSymbol}">--</td>
+                <td th:text="${t.optionType}">CE</td>
+                <td th:text="${t.lots}">0</td>
+                <td th:text="${'₹' + t.entryPrice}">--</td>
+                <td th:text="${t.trailingActive} ? 'ON' : '--'">--</td>
+                <td th:text="${t.setupNames}">--</td>
+            </tr>
+            <tr th:if="${activeTrades.isEmpty()}"><td colspan="6">No active positions</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card" style="margin-top:24px;">
+    <h3>Closed Trades Today</h3>
+    <table>
+        <thead><tr><th>Time</th><th>Symbol</th><th>Type</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>Reason</th><th>Setups</th></tr></thead>
+        <tbody>
+        <tr th:each="t : ${closedTrades}" th:classappend="${t.pnl >= 0 ? 'closed win' : 'closed loss'}">
+            <td th:text="${t.exitTime}">--</td>
+            <td th:text="${t.contract.tradingSymbol}">--</td>
+            <td th:text="${t.optionType}">--</td>
+            <td th:text="${'₹' + t.entryPrice}">--</td>
+            <td th:text="${'₹' + t.exitPrice}">--</td>
+            <td th:classappend="${t.pnl >= 0 ? 'pos' : 'neg'}" th:text="${'₹' + t.pnl}">--</td>
+            <td th:text="${t.exitReason}">--</td>
+            <td th:text="${t.setupNames}">--</td>
+        </tr>
+        <tr th:if="${closedTrades.isEmpty()}"><td colspan="8">No closed trades yet today</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<p style="color:#64748b; font-size:12px; margin-top:24px;">
+    Auto-refresh 3s · /api/v1/status JSON · /actuator/health · 56.9% backtest win rate
+</p>
+</body>
+</html>

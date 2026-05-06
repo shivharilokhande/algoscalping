@@ -31,3 +31,22 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### AutoScalp runtime artifacts ###
+.env
+data/*.json
+data/*.pid
+data/heartbeat.txt
+logs/*.json
+logs/reviews/
+models/*.bin
+models/*.json
+!data/.gitkeep
+!logs/.gitkeep
+!models/.gitkeep
+
+# Maven wrapper distribution cache
+.m2/wrapper/dists/
+
+# Environment file variants (e.g. .env.local, .env.prod)
+.env.*

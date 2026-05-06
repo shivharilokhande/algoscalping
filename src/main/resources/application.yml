@@ -1,0 +1,3 @@
+# Configuration moved to application.properties (single source of truth).
+# Spring Boot loads application.properties first, then application.yml.
+# Keep this file empty so it doesn't override anything.
